@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Secure 3-Tier Application</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        header {
+            background: #102744;
+            color: white;
+            padding: 22px 8%;
+        }
+        main { max-width: 900px; margin: 35px auto; padding: 0 18px; }
+        .card {
+            background: white;
+            padding: 24px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px #0000000b;
+        }
+        input, textarea {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 12px 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font: inherit;
+        }
+        button, .admin-link {
+            padding: 10px 15px;
+            border: 0;
+            border-radius: 7px;
+            background: #1d4ed8;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .delete { background: #b91c1c; }
+        .task {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 15px 0;
+        }
+        .task form { display: inline; }
+        .done { color: #15803d; }
+        .muted { color: #64748b; }
+    </style>
+</head>
+<body>
+<header>
+    <h2>Secure 3-Tier Web Application</h2>
+    <p>AWS Cloud &amp; DevOps Project</p>
+</header>
+
+<main>
+    <section class="card">
+        <h1>Application Dashboard</h1>
+        <p>Manage your tasks in one place.</p>
+        <p class="done">● Application Status: Running</p>
+        <a class="admin-link" href="/admin/">Admin Panel</a>
+    </section>
+
+    <section class="card">
+        <h2>Add New Task</h2>
+        <form method="post" action="{% url 'add_task' %}">
+            {% csrf_token %}
+            <input type="text" name="title" maxlength="200"
+                   placeholder="Task title" required>
+            <textarea name="description" rows="3"
+                      placeholder="Task description (optional)"></textarea>
+            <button type="submit">Add Task</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Tasks from MySQL</h2>
+        <p class="muted">Total tasks: {{ tasks|length }}</p>
+
+        {% for task in tasks %}
+            <div class="task">
+                <div>
+                    <strong>{{ task.title }}</strong>
+                    {% if task.is_completed %}
+                        <span class="done"> — Completed</span>
+                    {% endif %}
+                    {% if task.description %}
+                        <p class="muted">{{ task.description }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <form method="post" action="{% url 'toggle_task' task.id %}">
+                        {% csrf_token %}
+                        <button type="submit">
+                            {% if task.is_completed %}Undo{% else %}Complete{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'delete_task' task.id %}">
+                        {% csrf_token %}
+                        <button class="delete" type="submit">Delete</button>
+                    </form>
+                </div>
+            </div>
+        {% empty %}
+            <p class="muted">No tasks yet. Add your first task above.</p>
+        {% endfor %}
+    </section>
+</main>
+</body>
+</html>
