@@ -4,109 +4,479 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Secure 3-Tier Application</title>
+    <title>Secure 3-Tier | Dashboard</title>
+
     <style>
-        * { box-sizing: border-box; }
+        :root {
+            --navy: #102744;
+            --blue: #2563eb;
+            --blue-dark: #1d4ed8;
+            --bg: #f4f7fb;
+            --text: #172033;
+            --muted: #64748b;
+            --border: #e5eaf2;
+            --green: #15803d;
+            --red: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f1f5f9;
-            color: #0f172a;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
         }
+
         header {
-            background: #102744;
+            background: linear-gradient(120deg, #102744, #1e416c);
             color: white;
-            padding: 22px 8%;
+            padding: 24px 20px;
+            box-shadow: 0 4px 18px #10274420;
         }
-        main { max-width: 900px; margin: 35px auto; padding: 0 18px; }
-        .card {
-            background: white;
-            padding: 24px;
-            margin-bottom: 20px;
+
+        .header-inner {
+            max-width: 1080px;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+
+        .brand-icon {
+            display: grid;
+            place-items: center;
+            width: 46px;
+            height: 46px;
             border-radius: 12px;
-            box-shadow: 0 4px 14px #0000000b;
+            background: #ffffff18;
+            border: 1px solid #ffffff30;
+            font-size: 22px;
         }
+
+        header h2 {
+            margin: 0;
+            font-size: 21px;
+            letter-spacing: -0.4px;
+        }
+
+        header p {
+            margin: 3px 0 0;
+            color: #d5e3f5;
+            font-size: 13px;
+        }
+
+        .admin-link {
+            display: inline-block;
+            padding: 10px 15px;
+            color: white;
+            border: 1px solid #ffffff50;
+            border-radius: 9px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .admin-link:hover {
+            background: #ffffff18;
+        }
+
+        main {
+            max-width: 1080px;
+            margin: 34px auto;
+            padding: 0 20px 36px;
+        }
+
+        .welcome {
+            margin-bottom: 25px;
+        }
+
+        .welcome h1 {
+            margin: 0;
+            font-size: clamp(25px, 4vw, 32px);
+            letter-spacing: -0.8px;
+        }
+
+        .welcome p {
+            color: var(--muted);
+            margin: 7px 0 0;
+        }
+
+        .overview {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card, .card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            box-shadow: 0 5px 22px #17203308;
+        }
+
+        .stat-card {
+            padding: 22px;
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            margin-top: 6px;
+            font-size: 28px;
+            font-weight: 750;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--green);
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 999px;
+            padding: 6px 11px;
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .card {
+            padding: 25px;
+            margin-bottom: 22px;
+        }
+
+        .card-heading {
+            margin-bottom: 18px;
+        }
+
+        .card-heading h2 {
+            font-size: 19px;
+            margin: 0;
+            letter-spacing: -0.3px;
+        }
+
+        .card-heading p {
+            color: var(--muted);
+            font-size: 14px;
+            margin: 5px 0 0;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 14px 0 7px;
+        }
+
         input, textarea {
             display: block;
             width: 100%;
-            padding: 12px;
-            margin: 12px 0;
-            border: 1px solid #cbd5e1;
-            border-radius: 7px;
+            padding: 12px 14px;
+            border: 1px solid #d6deea;
+            border-radius: 9px;
+            background: white;
+            color: var(--text);
             font: inherit;
+            font-size: 14px;
+            transition: border-color .15s, box-shadow .15s;
         }
-        button, .admin-link {
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px #2563eb18;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 85px;
+        }
+
+        button {
             padding: 10px 15px;
             border: 0;
-            border-radius: 7px;
-            background: #1d4ed8;
+            border-radius: 8px;
+            background: var(--blue);
             color: white;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 650;
             cursor: pointer;
-            text-decoration: none;
+            transition: background .15s, transform .15s;
         }
-        .delete { background: #b91c1c; }
+
+        button:hover {
+            background: var(--blue-dark);
+        }
+
+        button:focus-visible, a:focus-visible {
+            outline: 3px solid #93c5fd;
+            outline-offset: 3px;
+        }
+
+        .submit-btn {
+            margin-top: 15px;
+            padding: 12px 18px;
+            font-size: 14px;
+        }
+
+        .tasks-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .task-count {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
         .task {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 15px 0;
+            gap: 18px;
+            padding: 19px 0;
+            border-bottom: 1px solid var(--border);
         }
-        .task form { display: inline; }
-        .done { color: #15803d; }
-        .muted { color: #64748b; }
+
+        .task:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .task-info {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .task-info strong {
+            font-size: 15px;
+        }
+
+        .task-description {
+            margin: 5px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .done {
+            color: var(--green);
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .task-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .delete {
+            background: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+        }
+
+        .delete:hover {
+            background: #ffe4e6;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 12px;
+            color: var(--muted);
+        }
+
+        .empty-state strong {
+            display: block;
+            color: var(--text);
+            font-size: 15px;
+            margin-bottom: 5px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        @media (max-width: 640px) {
+            header {
+                padding: 19px 16px;
+            }
+
+            header h2 {
+                font-size: 17px;
+            }
+
+            .brand-icon {
+                width: 40px;
+                height: 40px;
+            }
+
+            main {
+                margin-top: 25px;
+                padding: 0 14px 25px;
+            }
+
+            .overview {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .stat-card, .card {
+                padding: 19px;
+            }
+
+            .task {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .task-actions {
+                width: 100%;
+            }
+        }
     </style>
 </head>
+
 <body>
 <header>
-    <h2>Secure 3-Tier Web Application</h2>
-    <p>AWS Cloud &amp; DevOps Project</p>
+    <div class="header-inner">
+        <div class="brand">
+            <div class="brand-icon" aria-hidden="true">☁</div>
+            <div>
+                <h2>Secure 3-Tier Application</h2>
+                <p>AWS Cloud &amp; DevOps Project</p>
+            </div>
+        </div>
+
+        <a class="admin-link" href="/admin/">Admin Panel ↗</a>
+    </div>
 </header>
 
 <main>
-    <section class="card">
+    <section class="welcome">
         <h1>Application Dashboard</h1>
-        <p>Manage your tasks in one place.</p>
-        <p class="done">● Application Status: Running</p>
-        <a class="admin-link" href="/admin/">Admin Panel</a>
+        <p>Welcome back! Manage your tasks and track application status.</p>
+    </section>
+
+    <section class="overview">
+        <div class="stat-card">
+            <div class="stat-label">Total Tasks</div>
+            <div class="stat-value">{{ tasks|length }}</div>
+            <div class="stat-label">Tasks stored in MySQL</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Application Health</div>
+            <div class="stat-value">Operational</div>
+            <div class="status">
+                <span class="status-dot"></span>
+                Application Status: Running
+            </div>
+        </div>
     </section>
 
     <section class="card">
-        <h2>Add New Task</h2>
+        <div class="card-heading">
+            <h2>Create a New Task</h2>
+            <p>Add a task and keep your work organised.</p>
+        </div>
+
         <form method="post" action="{% url 'add_task' %}">
             {% csrf_token %}
-            <input type="text" name="title" maxlength="200"
-                   placeholder="Task title" required>
-            <textarea name="description" rows="3"
-                      placeholder="Task description (optional)"></textarea>
-            <button type="submit">Add Task</button>
+
+            <label for="title">Task title</label>
+            <input
+                id="title"
+                type="text"
+                name="title"
+                maxlength="200"
+                placeholder="e.g. Review AWS deployment"
+                required
+            >
+
+            <label for="description">Description (optional)</label>
+            <textarea
+                id="description"
+                name="description"
+                rows="3"
+                placeholder="Add a few details about this task..."
+            ></textarea>
+
+            <button class="submit-btn" type="submit">+ Add Task</button>
         </form>
     </section>
 
     <section class="card">
-        <h2>Tasks from MySQL</h2>
-        <p class="muted">Total tasks: {{ tasks|length }}</p>
+        <div class="tasks-header">
+            <div class="card-heading">
+                <h2>Your Tasks</h2>
+                <p>View, complete or remove your tasks.</p>
+            </div>
+
+            <span class="task-count">{{ tasks|length }} total</span>
+        </div>
 
         {% for task in tasks %}
             <div class="task">
-                <div>
+                <div class="task-info">
                     <strong>{{ task.title }}</strong>
+
                     {% if task.is_completed %}
-                        <span class="done"> — Completed</span>
+                        <span class="done"> — ✓ Completed</span>
                     {% endif %}
+
                     {% if task.description %}
-                        <p class="muted">{{ task.description }}</p>
+                        <p class="task-description">{{ task.description }}</p>
                     {% endif %}
                 </div>
-                <div>
+
+                <div class="task-actions">
                     <form method="post" action="{% url 'toggle_task' task.id %}">
                         {% csrf_token %}
                         <button type="submit">
-                            {% if task.is_completed %}Undo{% else %}Complete{% endif %}
+                            {% if task.is_completed %}Undo{% else %}✓ Complete{% endif %}
                         </button>
                     </form>
+
                     <form method="post" action="{% url 'delete_task' task.id %}">
                         {% csrf_token %}
                         <button class="delete" type="submit">Delete</button>
@@ -114,9 +484,16 @@
                 </div>
             </div>
         {% empty %}
-            <p class="muted">No tasks yet. Add your first task above.</p>
+            <div class="empty-state">
+                <strong>No tasks yet</strong>
+                Your task list is empty. Add your first task above.
+            </div>
         {% endfor %}
     </section>
 </main>
+
+<footer>
+    Secure 3-Tier Web Application · AWS Cloud &amp; DevOps Learning Project
+</footer>
 </body>
 </html>
