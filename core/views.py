@@ -36,3 +36,7 @@ def delete_task(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     task.delete()
     return redirect("home")
+from django.http import JsonResponse
+
+def healthz(request):
+    return JsonResponse({"status": "ok"})

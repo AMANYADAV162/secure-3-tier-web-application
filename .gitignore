@@ -8,3 +8,5 @@ media/
 staticfiles/
 .idea/
 .vscode/
+
+task-*.json
