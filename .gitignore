@@ -10,3 +10,8 @@ staticfiles/
 .vscode/
 
 task-*.json
+# Terraform local files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
