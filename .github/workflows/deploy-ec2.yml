@@ -56,7 +56,6 @@ jobs:
         shell: bash
         run: |
           set -eu
-
           URL=$(aws s3 presign \
             s3://secure-3-tier-deploy-244546636157-us-east-1/deployments/latest.zip \
             --expires-in 900 \
@@ -72,8 +71,7 @@ jobs:
           PRESIGNED_URL: ${{ steps.presign.outputs.url }}
         run: |
           set -eu
-
-          python - <<'PY'
+          python - <<'PY_SETUP'
           import json
           import os
           import shlex
@@ -88,7 +86,6 @@ jobs:
           test -d "$APP_DIR"
           test -x "$APP_DIR/venv/bin/python"
           command -v curl
-          command -v unzip
 
           curl --fail --silent --show-error --location \
             __PRESIGNED_URL__ \
@@ -96,10 +93,44 @@ jobs:
 
           test -s "$WORK_DIR/deployment.zip"
 
-          # Preserve the instance's production settings and environment.
-          unzip -oq "$WORK_DIR/deployment.zip" \
-            -d "$APP_DIR" \
-            -x 'config/settings.py' '.env' '*/.env'
+          # Extract with Python and preserve production settings and secrets.
+          "$APP_DIR/venv/bin/python" - "$WORK_DIR/deployment.zip" "$APP_DIR" <<'PY_EXTRACT'
+          import pathlib
+          import shutil
+          import sys
+          import zipfile
+          from pathlib import PurePosixPath
+
+          archive = sys.argv[1]
+          root = pathlib.Path(sys.argv[2]).resolve()
+
+          with zipfile.ZipFile(archive) as zf:
+              for item in zf.infolist():
+                  rel = PurePosixPath(item.filename)
+
+                  if rel.is_absolute() or ".." in rel.parts:
+                      raise SystemExit("Unsafe ZIP path: " + item.filename)
+
+                  if not rel.parts:
+                      continue
+
+                  if rel.as_posix() == "config/settings.py" or rel.name == ".env":
+                      continue
+
+                  target = root.joinpath(*rel.parts).resolve()
+
+                  if root != target and root not in target.parents:
+                      raise SystemExit("Unsafe destination: " + item.filename)
+
+                  if item.is_dir():
+                      target.mkdir(parents=True, exist_ok=True)
+                  else:
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      with zf.open(item) as src, target.open("wb") as dst:
+                          shutil.copyfileobj(src, dst)
+
+          print("ZIP extracted successfully.")
+          PY_EXTRACT
 
           test -f "$APP_DIR/requirements.txt"
 
@@ -124,7 +155,7 @@ jobs:
 
           with open("ssm-parameters.json", "w") as f:
               json.dump({"commands": [command]}, f)
-          PY
+          PY_SETUP
 
       - name: Run deployment through SSM
         shell: bash
