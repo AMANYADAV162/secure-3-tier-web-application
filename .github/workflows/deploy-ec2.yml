@@ -54,7 +54,7 @@ jobs:
           import json
 
           command = r'''
-          set -euo pipefail
+          set -eu
 
           APP_DIR="/home/ubuntu/secure-3-tier-web-application"
           BUCKET="secure-3-tier-deploy-244546636157-us-east-1"
