@@ -98,7 +98,7 @@ jobs:
       - name: Run deployment through SSM
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
 
           COMMAND_ID=$(aws ssm send-command \
             --targets "Key=tag:Name,Values=secure-3-tier-asg-instance" \
