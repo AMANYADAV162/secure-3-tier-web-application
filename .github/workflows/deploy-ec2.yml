@@ -1,3 +1,4 @@
+
 name: Deploy EC2 Auto Scaling Group
 
 on:
@@ -30,6 +31,7 @@ jobs:
       - name: Package application
         shell: bash
         run: |
+          set -eu
           git archive --format=zip --output=deployment.zip HEAD
 
           if unzip -Z1 deployment.zip | grep -Eq '(^|/)\.env$'; then
@@ -41,36 +43,60 @@ jobs:
           echo "Deployment package created."
 
       - name: Upload package to S3
+        shell: bash
         run: |
+          set -eu
           aws s3 cp deployment.zip \
             s3://secure-3-tier-deploy-244546636157-us-east-1/deployments/latest.zip \
             --region us-east-1 \
             --sse AES256
 
-      - name: Prepare SSM deployment command
+      - name: Create temporary S3 download URL
+        id: presign
         shell: bash
         run: |
+          set -eu
+
+          URL=$(aws s3 presign \
+            s3://secure-3-tier-deploy-244546636157-us-east-1/deployments/latest.zip \
+            --expires-in 900 \
+            --region us-east-1)
+
+          test -n "$URL"
+          echo "::add-mask::$URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare SSM deployment command
+        shell: bash
+        env:
+          PRESIGNED_URL: ${{ steps.presign.outputs.url }}
+        run: |
+          set -eu
+
           python - <<'PY'
           import json
+          import os
+          import shlex
 
           command = r'''
           set -eu
 
           APP_DIR="/home/ubuntu/secure-3-tier-web-application"
-          BUCKET="secure-3-tier-deploy-244546636157-us-east-1"
           WORK_DIR="$(mktemp -d)"
           trap 'rm -rf "$WORK_DIR"' EXIT
 
           test -d "$APP_DIR"
           test -x "$APP_DIR/venv/bin/python"
+          command -v curl
+          command -v unzip
 
-          aws s3 cp \
-            "s3://${BUCKET}/deployments/latest.zip" \
-            "$WORK_DIR/deployment.zip" \
-            --region us-east-1
+          curl --fail --silent --show-error --location \
+            __PRESIGNED_URL__ \
+            --output "$WORK_DIR/deployment.zip"
 
-          # Preserve EC2's production settings.py and its .env file.
-          # Neither file should be replaced by the source ZIP.
+          test -s "$WORK_DIR/deployment.zip"
+
+          # Preserve the instance's production settings and environment.
           unzip -oq "$WORK_DIR/deployment.zip" \
             -d "$APP_DIR" \
             -x 'config/settings.py' '.env' '*/.env'
@@ -90,6 +116,11 @@ jobs:
 
           echo "EC2 deployment and local HTTP check succeeded."
           '''
+
+          command = command.replace(
+              "__PRESIGNED_URL__",
+              shlex.quote(os.environ["PRESIGNED_URL"])
+          )
 
           with open("ssm-parameters.json", "w") as f:
               json.dump({"commands": [command]}, f)
