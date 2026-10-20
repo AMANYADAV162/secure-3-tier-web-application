@@ -1,0 +1,143 @@
+name: Deploy EC2 Auto Scaling Group
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-ec2-main
+  cancel-in-progress: false
+
+jobs:
+  deploy-ec2:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Package application
+        shell: bash
+        run: |
+          git archive --format=zip --output=deployment.zip HEAD
+
+          if unzip -Z1 deployment.zip | grep -Eq '(^|/)\.env$'; then
+            echo "ERROR: .env file must not be deployed."
+            exit 1
+          fi
+
+          test -s deployment.zip
+          echo "Deployment package created."
+
+      - name: Upload package to S3
+        run: |
+          aws s3 cp deployment.zip \
+            s3://secure-3-tier-deploy-244546636157-us-east-1/deployments/latest.zip \
+            --region us-east-1 \
+            --sse AES256
+
+      - name: Prepare SSM deployment command
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+
+          command = r'''
+          set -euo pipefail
+
+          APP_DIR="/home/ubuntu/secure-3-tier-web-application"
+          BUCKET="secure-3-tier-deploy-244546636157-us-east-1"
+          WORK_DIR="$(mktemp -d)"
+          trap 'rm -rf "$WORK_DIR"' EXIT
+
+          test -d "$APP_DIR"
+          test -x "$APP_DIR/venv/bin/python"
+
+          aws s3 cp \
+            "s3://${BUCKET}/deployments/latest.zip" \
+            "$WORK_DIR/deployment.zip" \
+            --region us-east-1
+
+          # Preserve EC2's production settings.py and its .env file.
+          # Neither file should be replaced by the source ZIP.
+          unzip -oq "$WORK_DIR/deployment.zip" \
+            -d "$APP_DIR" \
+            -x 'config/settings.py' '.env' '*/.env'
+
+          test -f "$APP_DIR/requirements.txt"
+
+          "$APP_DIR/venv/bin/pip" install \
+            -r "$APP_DIR/requirements.txt"
+
+          "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" check
+
+          systemctl restart gunicorn
+          systemctl reload nginx
+
+          curl --fail --silent --show-error \
+            http://127.0.0.1/ -o /dev/null
+
+          echo "EC2 deployment and local HTTP check succeeded."
+          '''
+
+          with open("ssm-parameters.json", "w") as f:
+              json.dump({"commands": [command]}, f)
+          PY
+
+      - name: Run deployment through SSM
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          COMMAND_ID=$(aws ssm send-command \
+            --targets "Key=tag:Name,Values=secure-3-tier-asg-instance" \
+            --document-name "AWS-RunShellScript" \
+            --parameters file://ssm-parameters.json \
+            --max-errors "0" \
+            --region us-east-1 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          for attempt in $(seq 1 60); do
+            RESULT=$(aws ssm list-command-invocations \
+              --command-id "$COMMAND_ID" \
+              --details \
+              --region us-east-1 \
+              --output json)
+
+            TOTAL=$(echo "$RESULT" | jq '.CommandInvocations | length')
+            SUCCESS=$(echo "$RESULT" | jq \
+              '[.CommandInvocations[] | select(.Status == "Success")] | length')
+            FAILED=$(echo "$RESULT" | jq \
+              '[.CommandInvocations[] | select(.Status | test("Failed|TimedOut|Cancelled|Cancelling"))] | length')
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "$RESULT" | jq '.CommandInvocations[] |
+                {InstanceId, Status, StatusDetails, Output: .CommandPlugins[0].Output}'
+              exit 1
+            fi
+
+            if [ "$TOTAL" -gt 0 ] && [ "$SUCCESS" -eq "$TOTAL" ]; then
+              echo "$RESULT" | jq '.CommandInvocations[] |
+                {InstanceId, Status, Output: .CommandPlugins[0].Output}'
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Deployment timed out. Check SSM Run Command in AWS Console."
+          exit 1
