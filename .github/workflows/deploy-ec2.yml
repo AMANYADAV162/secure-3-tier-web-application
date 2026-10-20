@@ -1,4 +1,3 @@
-
 name: Deploy EC2 Auto Scaling Group
 
 on:
@@ -71,6 +70,7 @@ jobs:
           PRESIGNED_URL: ${{ steps.presign.outputs.url }}
         run: |
           set -eu
+
           python - <<'PY_SETUP'
           import json
           import os
@@ -93,7 +93,6 @@ jobs:
 
           test -s "$WORK_DIR/deployment.zip"
 
-          # Extract with Python and preserve production settings and secrets.
           "$APP_DIR/venv/bin/python" - "$WORK_DIR/deployment.zip" "$APP_DIR" <<'PY_EXTRACT'
           import pathlib
           import shutil
@@ -142,8 +141,24 @@ jobs:
           systemctl restart gunicorn
           systemctl reload nginx
 
-          curl --fail --silent --show-error \
-            http://127.0.0.1/ -o /dev/null
+          HEALTHY=0
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --max-time 5 \
+                http://127.0.0.1/ -o /dev/null; then
+              HEALTHY=1
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$HEALTHY" -ne 1 ]; then
+            echo "ERROR: Application did not become healthy within 60 seconds."
+            systemctl status gunicorn --no-pager || true
+            tail -n 60 /var/log/nginx/error.log || true
+            exit 1
+          fi
 
           echo "EC2 deployment and local HTTP check succeeded."
           '''
